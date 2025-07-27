@@ -207,8 +207,34 @@
     </div>
 
     <script>
-        // API Configuration
-        const API_URL = "https://api.mail.tm";
+        // Multiple API Configuration
+        const API_ENDPOINTS = [
+            {
+                name: "mail.tm",
+                baseUrl: "https://api.mail.tm",
+                domainsUrl: "https://api.mail.tm/domains",
+                generateEmail: (randomString) => `${randomString}@mail.tm`
+            },
+            {
+                name: "tempmail.so",
+            baseUrl: "https://tempmail.so/api/v1",
+            generateEmail: (randomString) => `${randomString}@tempmail.so`
+        },
+            {
+                name: "mail.gw",
+                baseUrl: "https://api.mail.gw",
+                domainsUrl: "https://api.mail.gw/domains",
+                generateEmail: (randomString) => `${randomString}@mail.gw`
+            },
+            {
+                name: "temp-mail.io",
+                baseUrl: "https://api.temp-mail.io/v3",
+                domainsUrl: "https://api.temp-mail.io/v3/domains",
+                generateEmail: (randomString) => `${randomString}@temp-mail.io`
+            }
+        ];
+
+        let currentApiIndex = 0;
         let currentAccount = null;
         let token = null;
         let currentEmail = null;
@@ -220,67 +246,117 @@
         const newBtn = document.getElementById('newBtn');
         const refreshBtn = document.getElementById('refreshBtn');
 
+        // Get Random API Endpoint
+        function getRandomApiEndpoint() {
+            currentApiIndex = Math.floor(Math.random() * API_ENDPOINTS.length);
+            return API_ENDPOINTS[currentApiIndex];
+        }
+
         // Generate Random Email
         async function generateEmail() {
             try {
-                inbox.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading"></div> Creating email...</div>';
+                inbox.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading"></div> Waiting for emails...</div>';
                 
+                const api = getRandomApiEndpoint();
                 const randomString = Math.random().toString(36).substring(2, 10);
-                currentEmail = `${randomString}@mail.tm`;
+                
+                if (api.name === "1secmail") {
+                    // 1secmail doesn't require account creation
+                    const domainIndex = Math.floor(Math.random() * api.domains.length);
+                    currentEmail = `${randomString}@${api.domains[domainIndex]}`;
+                    emailDisplay.textContent = currentEmail;
+                    checkInbox();
+                    return;
+                }
+                
+                currentEmail = api.generateEmail(randomString);
                 emailDisplay.textContent = currentEmail;
                 
-                // Create account
-                const accountResponse = await fetch(`${API_URL}/accounts`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        address: currentEmail,
-                        password: "strongpassword123"
-                    })
-                });
-                
-                currentAccount = await accountResponse.json();
-                
-                // Login
-                const tokenResponse = await fetch(`${API_URL}/token`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        address: currentEmail,
-                        password: "strongpassword123"
-                    })
-                });
-                
-                const tokenData = await tokenResponse.json();
-                token = tokenData.token;
+                // For other APIs that require account creation
+                if (api.baseUrl) {
+                    // Create account
+                    const accountResponse = await fetch(`${api.baseUrl}/accounts`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            address: currentEmail,
+                            password: "strongpassword123"
+                        })
+                    });
+                    
+                    currentAccount = await accountResponse.json();
+                    
+                    // Login
+                    const tokenResponse = await fetch(`${api.baseUrl}/token`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            address: currentEmail,
+                            password: "strongpassword123"
+                        })
+                    });
+                    
+                    const tokenData = await tokenResponse.json();
+                    token = tokenData.token;
+                }
                 
                 checkInbox();
                 
             } catch (error) {
-                inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--accent);">Error creating email</div>';
+                console.error("Error creating email with API", API_ENDPOINTS[currentApiIndex].name, error);
+                // Try with next API if current one fails
+                if (currentApiIndex < API_ENDPOINTS.length - 1) {
+                    currentApiIndex++;
+                    generateEmail();
+                } else {
+                    inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--accent);">Error creating email. Please try again.</div>';
+                }
             }
         }
 
         // Check Inbox
         async function checkInbox() {
-            if (!token) return;
+            if (!currentEmail) return;
             
             try {
                 refreshBtn.innerHTML = '<div class="loading"></div>';
+                const api = API_ENDPOINTS[currentApiIndex];
+                let emails = [];
                 
-                const response = await fetch(`${API_URL}/messages`, {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
+                if (api.name === "1secmail") {
+                    // 1secmail API format
+                    const [mailbox, domain] = currentEmail.split('@');
+                    const response = await fetch(`${api.baseUrl}/?action=getMessages&login=${mailbox}&domain=${domain}`);
+                    const messageIds = await response.json();
+                    
+                    if (messageIds && messageIds.length > 0) {
+                        const emailPromises = messageIds.map(async (msg) => {
+                            const msgResponse = await fetch(`${api.baseUrl}/?action=readMessage&login=${mailbox}&domain=${domain}&id=${msg.id}`);
+                            return await msgResponse.json();
+                        });
+                        emails = await Promise.all(emailPromises);
+                    }
+                } else if (token) {
+                    // Standard mail.tm-like API format
+                    const response = await fetch(`${api.baseUrl}/messages`, {
+                        headers: { "Authorization": `Bearer ${token}` }
+                    });
+                    
+                    const data = await response.json();
+                    if (data && data['hydra:member']) {
+                        emails = data['hydra:member'];
+                    }
+                }
                 
-                const data = await response.json();
                 refreshBtn.textContent = 'Refresh';
                 
-                if (data && data['hydra:member'] && data['hydra:member'].length > 0) {
-                    renderEmails(data['hydra:member']);
+                if (emails.length > 0) {
+                    renderEmails(emails);
                 } else {
                     inbox.innerHTML = '<div style="text-align: center; padding: 20px;">No emails yet</div>';
                 }
             } catch (error) {
+                console.error("Error checking inbox:", error);
                 inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--accent);">Error loading inbox</div>';
                 refreshBtn.textContent = 'Refresh';
             }
@@ -293,13 +369,26 @@
             emails.forEach(email => {
                 const emailEl = document.createElement('div');
                 emailEl.className = 'email-item';
-                emailEl.innerHTML = `
-                    <div class="email-subject">${email.subject || 'No Subject'}</div>
-                    <div>From: ${email.from.value || 'Unknown'}</div>
-                    <div>${email.intro || 'No preview'}</div>
-                `;
                 
-                emailEl.addEventListener('click', () => viewEmail(email.id));
+                if (API_ENDPOINTS[currentApiIndex].name === "1secmail") {
+                    // 1secmail format
+                    emailEl.innerHTML = `
+                        <div class="email-subject">${email.subject || 'No Subject'}</div>
+                        <div>From: ${email.from || 'Unknown'}</div>
+                        <div>${email.textBody ? email.textBody.substring(0, 100) + '...' : 'No preview'}</div>
+                    `;
+                    emailEl.addEventListener('click', () => viewEmail(email.id));
+                } else {
+                    // Standard format
+                    const fromValue = email.from?.value || email.from?.address || email.from || 'Unknown';
+                    emailEl.innerHTML = `
+                        <div class="email-subject">${email.subject || 'No Subject'}</div>
+                        <div>From: ${fromValue}</div>
+                        <div>${email.intro || email.preview || 'No preview'}</div>
+                    `;
+                    emailEl.addEventListener('click', () => viewEmail(email.id));
+                }
+                
                 inbox.appendChild(emailEl);
             });
         }
@@ -307,12 +396,24 @@
         // View Email
         async function viewEmail(emailId) {
             try {
-                const response = await fetch(`${API_URL}/messages/${emailId}`, {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
+                const api = API_ENDPOINTS[currentApiIndex];
+                let emailData = null;
                 
-                const email = await response.json();
-                alert(`Subject: ${email.subject}\n\nFrom: ${email.from.value}\n\n${email.text}`);
+                if (api.name === "1secmail") {
+                    const [mailbox, domain] = currentEmail.split('@');
+                    const response = await fetch(`${api.baseUrl}/?action=readMessage&login=${mailbox}&domain=${domain}&id=${emailId}`);
+                    emailData = await response.json();
+                    
+                    alert(`Subject: ${emailData.subject}\n\nFrom: ${emailData.from}\n\n${emailData.textBody || emailData.body}`);
+                } else {
+                    const response = await fetch(`${api.baseUrl}/messages/${emailId}`, {
+                        headers: { "Authorization": `Bearer ${token}` }
+                    });
+                    
+                    emailData = await response.json();
+                    const fromValue = emailData.from?.value || emailData.from?.address || emailData.from || 'Unknown';
+                    alert(`Subject: ${emailData.subject}\n\nFrom: ${fromValue}\n\n${emailData.text || emailData.body}`);
+                }
             } catch (error) {
                 alert("Error loading email");
             }
@@ -320,6 +421,8 @@
 
         // Copy Email
         copyBtn.addEventListener('click', () => {
+            if (!currentEmail) return;
+            
             const tempInput = document.createElement('input');
             tempInput.value = currentEmail;
             document.body.appendChild(tempInput);
