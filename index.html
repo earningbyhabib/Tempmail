@@ -209,25 +209,13 @@
     <script>
         // Working Public Temp Mail APIs
         const API_ENDPOINTS = [
-            {
-                name: "mailgw",
-                baseUrl: "https://api.mail.gw",
-                domainsUrl: "https://api.mail.gw/domains",
-                generateEmail: (randomString) => `${randomString}@mail.gw`,
-                authRequired: true
-            },
+         
             {
                 name: "10minutemail",
                 baseUrl: "https://10minutemail.com/api/v1",
                 generateEmail: (randomString) => `${randomString}@10minutemail.com`,
                 directAccess: true
             },
-            {
-                name: "temp-mail.io",
-                baseUrl: "https://api.temp-mail.io/v3",
-                generateEmail: (randomString) => `${randomString}@temp-mail.io`,
-                authRequired: true
-            }
         ];
 
         // CORS Proxy for GitHub Pages
