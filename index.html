@@ -15,7 +15,6 @@
             --card-bg: rgba(255, 255, 255, 0.1);
             --border-radius: 8px;
             --shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            --error: #FF5252;
         }
 
         * {
@@ -121,11 +120,6 @@
             color: var(--light);
         }
 
-        .btn-error {
-            background: var(--error);
-            color: var(--light);
-        }
-
         .inbox {
             background: rgba(0,0,0,0.3);
             border-radius: var(--border-radius);
@@ -161,13 +155,6 @@
             border-radius: 50%;
             border-top-color: var(--accent);
             animation: spin 1s linear infinite;
-        }
-
-        .status-text {
-            text-align: center;
-            margin-top: 10px;
-            font-size: 0.9rem;
-            color: var(--accent);
         }
 
         @keyframes spin {
@@ -217,49 +204,39 @@
                 <div class="loading"></div> Loading emails...
             </div>
         </div>
-        <div class="status-text" id="statusText"></div>
     </div>
 
     <script>
-        // Reliable Temp Mail APIs
+        // Working Public Temp Mail APIs
         const API_ENDPOINTS = [
-            {
-                name: "1secmail",
-                baseUrl: "https://www.1secmail.com/api/v1",
-                domains: ["1secmail.com", "1secmail.net", "1secmail.org"],
-                generateEmail: function(randomStr) {
-                    const domain = this.domains[Math.floor(Math.random() * this.domains.length)];
-                    return `${randomStr}@${domain}`;
-                },
-                directAccess: true
-            },
             {
                 name: "mailgw",
                 baseUrl: "https://api.mail.gw",
-                domains: ["mail.gw"],
-                generateEmail: function(randomStr) {
-                    return `${randomStr}@${this.domains[0]}`;
-                },
+                domainsUrl: "https://api.mail.gw/domains",
+                generateEmail: (randomString) => `${randomString}@mail.gw`,
                 authRequired: true
             },
             {
-                name: "mail.tm",
-                baseUrl: "https://api.mail.tm",
-                domains: ["mail.tm"],
-                generateEmail: function(randomStr) {
-                    return `${randomStr}@${this.domains[0]}`;
-                },
+                name: "10minutemail",
+                baseUrl: "https://10minutemail.com/api/v1",
+                generateEmail: (randomString) => `${randomString}@10minutemail.com`,
+                directAccess: true
+            },
+            {
+                name: "temp-mail.io",
+                baseUrl: "https://api.temp-mail.io/v3",
+                generateEmail: (randomString) => `${randomString}@temp-mail.io`,
                 authRequired: true
             }
         ];
 
-        // Current state
+        // CORS Proxy for GitHub Pages
+        const PROXY_URL = "https://corsproxy.io/?";
         let currentApiIndex = 0;
-        let currentEmail = null;
+        let currentAccount = null;
         let token = null;
+        let currentEmail = null;
         let refreshInterval = null;
-        let retryCount = 0;
-        const MAX_RETRIES = API_ENDPOINTS.length * 2; // Try each API twice
 
         // DOM Elements
         const emailDisplay = document.getElementById('emailDisplay');
@@ -267,86 +244,83 @@
         const copyBtn = document.getElementById('copyBtn');
         const newBtn = document.getElementById('newBtn');
         const refreshBtn = document.getElementById('refreshBtn');
-        const statusText = document.getElementById('statusText');
 
-        // Simple fetch with error handling
-        async function safeFetch(url, options = {}) {
+        // Enhanced Fetch with Proxy and Error Handling
+        async function fetchEmailApi(url, options = {}, retries = 3) {
+            const api = API_ENDPOINTS[currentApiIndex];
+            const useProxy = !api.directAccess;
+            const fullUrl = useProxy ? `${PROXY_URL}${encodeURIComponent(url)}` : url;
+            
             try {
-                const response = await fetch(url, options);
-                if (!response.ok) throw new Error('Network response was not ok');
+                const response = await fetch(fullUrl, {
+                    ...options,
+                    headers: {
+                        ...options.headers,
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                });
+                
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 return await response.json();
             } catch (error) {
-                console.error('Fetch error:', error);
+                if (retries > 0) {
+                    console.log(`Retrying... (${retries} attempts left)`);
+                    return fetchEmailApi(url, options, retries - 1);
+                }
                 throw error;
             }
         }
 
-        // Update status message
-        function updateStatus(message, isError = false) {
-            statusText.textContent = message;
-            statusText.style.color = isError ? 'var(--error)' : 'var(--accent)';
-        }
-
-        // Generate new email
+        // Generate Random Email
         async function generateEmail() {
             try {
-                if (retryCount >= MAX_RETRIES) {
-                    updateStatus('All services failed. Please try again later.', true);
-                    inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--error);">All services failed. Please try again later.</div>';
-                    return;
-                }
-
-                retryCount++;
-                updateStatus(`Trying ${API_ENDPOINTS[currentApiIndex].name} service...`);
-                
                 inbox.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading"></div> Creating email...</div>';
                 
                 const api = API_ENDPOINTS[currentApiIndex];
-                const randomStr = Math.random().toString(36).substring(2, 10);
-                currentEmail = api.generateEmail(randomStr);
+                const randomString = Math.random().toString(36).substring(2, 10);
+                currentEmail = api.generateEmail(randomString);
                 emailDisplay.textContent = currentEmail;
                 
                 if (api.authRequired) {
                     // Create account
-                    const account = await safeFetch(`${api.baseUrl}/accounts`, {
+                    const accountResponse = await fetchEmailApi(`${api.baseUrl}/accounts`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             address: currentEmail,
-                            password: "temp123456"
+                            password: "strongpassword123"
                         })
                     });
+                    
+                    currentAccount = accountResponse;
                     
                     // Get token
-                    const auth = await safeFetch(`${api.baseUrl}/token`, {
+                    const tokenResponse = await fetchEmailApi(`${api.baseUrl}/token`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             address: currentEmail,
-                            password: "temp123456"
+                            password: "strongpassword123"
                         })
                     });
                     
-                    token = auth.token;
+                    token = tokenResponse.token;
                 }
                 
-                updateStatus(`Connected to ${api.name} service`);
-                await checkInbox();
-                retryCount = 0; // Reset retry count on success
+                checkInbox();
                 
             } catch (error) {
-                console.error("Error generating email:", error);
-                
-                // Try next API
-                currentApiIndex = (currentApiIndex + 1) % API_ENDPOINTS.length;
-                updateStatus(`Failed to connect. Trying next service...`, true);
-                
-                // Small delay before trying next API
-                setTimeout(generateEmail, 1000);
+                console.error("Error with API:", API_ENDPOINTS[currentApiIndex].name, error);
+                if (currentApiIndex < API_ENDPOINTS.length - 1) {
+                    currentApiIndex++;
+                    generateEmail();
+                } else {
+                    inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--accent);">Please try again later</div>';
+                }
             }
         }
 
-        // Check inbox for new emails
+        // Check Inbox with Loading Animation
         async function checkInbox() {
             if (!currentEmail) return;
             
@@ -355,112 +329,107 @@
                 const api = API_ENDPOINTS[currentApiIndex];
                 let emails = [];
                 
-                if (api.name === "1secmail") {
+                if (api.name === "10minutemail") {
                     const [mailbox, domain] = currentEmail.split('@');
-                    const response = await safeFetch(`${api.baseUrl}/?action=getMessages&login=${mailbox}&domain=${domain}`);
-                    
-                    if (response && response.length > 0) {
-                        // Fetch full messages
-                        const messagePromises = response.map(msg => 
-                            safeFetch(`${api.baseUrl}/?action=readMessage&login=${mailbox}&domain=${domain}&id=${msg.id}`)
-                        );
-                        emails = await Promise.all(messagePromises);
-                    }
-                } else {
-                    const response = await safeFetch(`${api.baseUrl}/messages`, {
-                        headers: { 
-                            "Authorization": `Bearer ${token}`,
-                            "Content-Type": "application/json"
-                        }
+                    const response = await fetchEmailApi(`${api.baseUrl}/messages?email=${currentEmail}`);
+                    emails = response || [];
+                } else if (api.authRequired && token) {
+                    const response = await fetchEmailApi(`${api.baseUrl}/messages`, {
+                        headers: { "Authorization": `Bearer ${token}` }
                     });
                     
-                    emails = response['hydra:member'] || response || [];
+                    if (response && response['hydra:member']) {
+                        emails = response['hydra:member'];
+                    }
                 }
                 
                 refreshBtn.textContent = 'Refresh';
-                renderEmails(emails);
                 
+                if (emails.length > 0) {
+                    renderEmails(emails);
+                } else {
+                    inbox.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading"></div> No emails yet</div>';
+                }
             } catch (error) {
                 console.error("Error checking inbox:", error);
-                inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--error);">Error loading emails. Trying again...</div>';
+                inbox.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: var(--accent);">
+                        <div class="loading"></div>
+                        Connecting...
+                    </div>
+                `;
                 refreshBtn.textContent = 'Refresh';
-                
-                // Try to regenerate email if inbox fails
-                setTimeout(() => {
-                    currentApiIndex = (currentApiIndex + 1) % API_ENDPOINTS.length;
-                    generateEmail();
-                }, 2000);
             }
         }
 
-        // Render emails in inbox
+        // Render Emails
         function renderEmails(emails) {
             inbox.innerHTML = '';
-            
-            if (emails.length === 0) {
-                inbox.innerHTML = '<div style="text-align: center; padding: 20px;">No emails yet</div>';
-                return;
-            }
             
             emails.forEach(email => {
                 const emailEl = document.createElement('div');
                 emailEl.className = 'email-item';
                 
-                const subject = email.subject || 'No Subject';
-                const from = email.from?.value || email.from?.address || email.from || 'Unknown';
-                const preview = email.textBody || email.intro || (email.body ? email.body.substring(0, 100) : 'No preview');
+                if (API_ENDPOINTS[currentApiIndex].name === "10minutemail") {
+                    emailEl.innerHTML = `
+                        <div class="email-subject">${email.subject || 'No Subject'}</div>
+                        <div>From: ${email.from || 'Unknown'}</div>
+                        <div>${email.body ? email.body.substring(0, 100) + '...' : 'No preview'}</div>
+                    `;
+                    emailEl.addEventListener('click', () => viewEmail(email.id));
+                } else {
+                    const fromValue = email.from?.value || email.from?.address || email.from || 'Unknown';
+                    emailEl.innerHTML = `
+                        <div class="email-subject">${email.subject || 'No Subject'}</div>
+                        <div>From: ${fromValue}</div>
+                        <div>${email.intro || email.preview || 'No preview'}</div>
+                    `;
+                    emailEl.addEventListener('click', () => viewEmail(email.id));
+                }
                 
-                emailEl.innerHTML = `
-                    <div class="email-subject">${subject}</div>
-                    <div>From: ${from}</div>
-                    <div>${preview}${preview.length >= 100 ? '...' : ''}</div>
-                `;
-                
-                emailEl.addEventListener('click', () => viewEmail(email.id));
                 inbox.appendChild(emailEl);
             });
         }
 
-        // View full email
+        // View Email
         async function viewEmail(emailId) {
             try {
                 const api = API_ENDPOINTS[currentApiIndex];
                 let emailData = null;
                 
-                if (api.name === "1secmail") {
-                    const [mailbox, domain] = currentEmail.split('@');
-                    emailData = await safeFetch(`${api.baseUrl}/?action=readMessage&login=${mailbox}&domain=${domain}&id=${emailId}`);
-                } else {
-                    emailData = await safeFetch(`${api.baseUrl}/messages/${emailId}`, {
+                if (api.name === "10minutemail") {
+                    emailData = await fetchEmailApi(`${api.baseUrl}/message/${emailId}?email=${currentEmail}`);
+                    alert(`Subject: ${emailData.subject}\n\nFrom: ${emailData.from}\n\n${emailData.body}`);
+                } else if (api.authRequired) {
+                    emailData = await fetchEmailApi(`${api.baseUrl}/messages/${emailId}`, {
                         headers: { "Authorization": `Bearer ${token}` }
                     });
+                    
+                    const fromValue = emailData.from?.value || emailData.from?.address || emailData.from || 'Unknown';
+                    alert(`Subject: ${emailData.subject}\n\nFrom: ${fromValue}\n\n${emailData.text || emailData.body}`);
                 }
-                
-                const subject = emailData.subject || 'No Subject';
-                const from = emailData.from?.value || emailData.from?.address || emailData.from || 'Unknown';
-                const body = emailData.textBody || emailData.text || emailData.body || 'No content';
-                
-                alert(`Subject: ${subject}\n\nFrom: ${from}\n\n${body}`);
             } catch (error) {
                 alert("Error loading email");
             }
         }
 
-        // Copy email to clipboard
+        // Copy Email
         copyBtn.addEventListener('click', () => {
             if (!currentEmail) return;
             
             navigator.clipboard.writeText(currentEmail).then(() => {
                 copyBtn.textContent = 'Copied!';
-                setTimeout(() => copyBtn.textContent = 'Copy', 2000);
+                setTimeout(() => {
+                    copyBtn.textContent = 'Copy';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
             });
         });
 
-        // Event listeners
+        // Event Listeners
         newBtn.addEventListener('click', () => {
             clearInterval(refreshInterval);
-            currentApiIndex = (currentApiIndex + 1) % API_ENDPOINTS.length;
-            retryCount = 0;
             generateEmail();
             refreshInterval = setInterval(checkInbox, 10000);
         });
@@ -469,7 +438,7 @@
 
         // Initialize
         generateEmail();
-        refreshInterval = setInterval(checkInbox, 10000);
+        refreshInterval = setInterval(checkInbox, 10000); // Auto-refresh every 10 seconds
     </script>
 </body>
 </html>
