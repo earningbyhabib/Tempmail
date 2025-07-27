@@ -6,7 +6,6 @@
     <title>TURBO TEMP MAIL - EARNING BY HABIB</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        /* আপনার CSS স্টাইল একই রাখুন */
         :root {
             --primary: #00C853;
             --secondary: #1B5E20;
@@ -179,15 +178,17 @@
     </style>
 </head>
 <body>
-    <!-- Header Image -->
+    <!-- Header Image with Clickable Link -->
     <div class="header-container">
-        <img src="https://i.postimg.cc/W118gC2j/Screenshot-20250727-062027.jpg" alt="EARNING BY HABIB" class="header-image">
+        <a href="https://t.me/earningbyhabib" target="_blank">
+            <img src="https://i.postimg.cc/W118gC2j/Screenshot-20250727-062027.jpg" alt="EARNING BY HABIB" class="header-image">
+        </a>
     </div>
 
     <!-- Text Below Image -->
     <div class="header-text">
-        <div class="logo-text">TURBO</div>
-        <div class="subtitle-text">Temporary Disposable Email</div>
+        <div class="logo-text">EBH_EMAIL</div>
+        <div class="subtitle-text">Welcome to Earning By Habib </div>
     </div>
 
     <!-- Main Content -->
@@ -196,7 +197,7 @@
         
         <div class="button-group">
             <button class="btn" id="copyBtn">Copy</button>
-            <button class="btn btn-secondary" id="newBtn">New Email</button>
+            <button class="btn btn-secondary" id="newBtn">Change Email</button>
             <button class="btn btn-secondary" id="refreshBtn">Refresh</button>
         </div>
 
@@ -207,15 +208,40 @@
         </div>
     </div>
 
+    <!-- Advertisement Banner -->
+    <div class="footer-banners" style="margin-top: 30px; width: 100%; max-width: 600px;">
+        <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; text-align: center;">
+            <p>Advertisement</p>
+            <!-- Replace with your actual ad code -->
+            <div style="margin: 10px auto; height: 90px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.2);">
+                <p>Your Ad Banner Here</p>
+            </div>
+            <!-- Example Google Adsense (uncomment and add your ID) -->
+            <!--
+            <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX"
+                crossorigin="anonymous"></script>
+            <ins class="adsbygoogle"
+                style="display:block"
+                data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+                data-ad-slot="XXXXXXXXXX"
+                data-ad-format="auto"
+                data-full-width-responsive="true"></ins>
+            <script>
+                (adsbygoogle = window.adsbygoogle || []).push({});
+            </script>
+            -->
+        </div>
+    </div>
+
     <script>
-        // MinuteInbox Configuration
-        const TEMP_MAIL_CONFIG = {
-            domain: "doodrops.org",
-            baseUrl: "https://www.disposablemail.com",
-            expireTime: 10 // minutes
+        // Mail.tm API Configuration
+        const MAIL_TM_API = {
+            baseUrl: "https://api.mail.tm",
+            password: "12345678" // Default password for all accounts
         };
 
         let currentEmail = null;
+        let authToken = null;
         let refreshInterval = null;
 
         // DOM Elements
@@ -225,67 +251,96 @@
         const newBtn = document.getElementById('newBtn');
         const refreshBtn = document.getElementById('refreshBtn');
 
-        // Generate Random Email
-        function generateRandomEmail() {
-            const randomString = Math.random().toString(36).substring(2, 10);
-            return `${randomString}@${TEMP_MAIL_CONFIG.domain}`;
-        }
-
-        // Create Email Session
-        async function createEmailSession(email) {
+        // Generate Random Email with Mail.tm domain
+        async function generateRandomEmail() {
             try {
-                // This is a mock implementation since we can't directly access MinuteInbox API
-                // In a real implementation, you would need a backend proxy
-                return new Promise(resolve => {
-                    setTimeout(() => {
-                        resolve({
-                            success: true,
-                            email: email
-                        });
-                    }, 500);
-                });
+                // First get available domain from Mail.tm
+                const domainsResponse = await fetch(`${MAIL_TM_API.baseUrl}/domains`);
+                const domainsData = await domainsResponse.json();
+                const domain = domainsData["hydra:member"][0].domain;
+                
+                const randomString = Math.random().toString(36).substring(2, 10);
+                return `${randomString}@${domain}`;
             } catch (error) {
-                console.error("Error creating email session:", error);
-                return { success: false };
+                console.error("Error getting domain:", error);
+                return `${Math.random().toString(36).substring(2, 10)}@mail.tm`; // fallback
             }
         }
 
-        // Check Inbox
-        async function checkInbox() {
-            if (!currentEmail) return;
-
+        // Create Email Account on Mail.tm
+        async function createEmailAccount(email) {
             try {
-                refreshBtn.innerHTML = '<div class="loading"></div> Loading';
+                const response = await fetch(`${MAIL_TM_API.baseUrl}/accounts`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        address: email,
+                        password: MAIL_TM_API.password
+                    })
+                });
                 
-                // Mock implementation - in real app you would call API
-                const mockEmails = [
-                    {
-                        id: 1,
-                        from: 'service@example.com',
-                        subject: 'Welcome to our service',
-                        body: 'Thank you for signing up. Please verify your email address.',
-                        date: new Date().toISOString()
-                    },
-                    {
-                        id: 2,
-                        from: 'noreply@website.com',
-                        subject: 'Your temporary email',
-                        body: 'This is your temporary email address that will expire in 10 minutes.',
-                        date: new Date().toISOString()
-                    }
-                ];
-
-                refreshBtn.textContent = 'Refresh';
-                renderEmails(mockEmails);
-                
+                return await response.json();
             } catch (error) {
-                console.error("Error checking inbox:", error);
-                inbox.innerHTML = `
-                    <div style="text-align: center; padding: 20px; color: var(--accent);">
-                        Could not load emails. Try refreshing.
-                    </div>
-                `;
-                refreshBtn.textContent = 'Refresh';
+                console.error("Error creating account:", error);
+                return null;
+            }
+        }
+
+        // Login to Mail.tm account
+        async function loginToAccount(email) {
+            try {
+                const response = await fetch(`${MAIL_TM_API.baseUrl}/token`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        address: email,
+                        password: MAIL_TM_API.password
+                    })
+                });
+                
+                const data = await response.json();
+                return data.token;
+            } catch (error) {
+                console.error("Error logging in:", error);
+                return null;
+            }
+        }
+
+        // Get Messages from Mail.tm
+        async function getMessages() {
+            if (!authToken) return [];
+            
+            try {
+                const response = await fetch(`${MAIL_TM_API.baseUrl}/messages`, {
+                    headers: {
+                        "Authorization": `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                return data["hydra:member"] || [];
+            } catch (error) {
+                console.error("Error getting messages:", error);
+                return [];
+            }
+        }
+
+        // Get Single Message Content
+        async function getMessageContent(messageId) {
+            if (!authToken) return null;
+            
+            try {
+                const response = await fetch(`${MAIL_TM_API.baseUrl}/messages/${messageId}`, {
+                    headers: {
+                        "Authorization": `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error("Error getting message content:", error);
+                return null;
             }
         }
 
@@ -304,10 +359,10 @@
                 
                 emailEl.innerHTML = `
                     <div class="email-subject">${email.subject || 'No Subject'}</div>
-                    <div>From: ${email.from || 'Unknown'}</div>
-                    <div>${email.body ? email.body.substring(0, 100) + '...' : 'No preview'}</div>
+                    <div>From: ${email.from?.address || 'Unknown'}</div>
+                    <div>${email.intro ? email.intro.substring(0, 100) + '...' : 'No preview'}</div>
                     <div style="font-size: 0.8rem; margin-top: 5px; opacity: 0.7;">
-                        ${new Date(email.date).toLocaleTimeString()}
+                        ${new Date(email.createdAt).toLocaleTimeString()}
                     </div>
                 `;
                 
@@ -317,7 +372,10 @@
         }
 
         // View Email
-        function viewEmail(email) {
+        async function viewEmail(email) {
+            // Get full message content
+            const fullMessage = await getMessageContent(email.id);
+            
             const modal = document.createElement('div');
             modal.style.position = 'fixed';
             modal.style.top = '0';
@@ -340,10 +398,10 @@
             
             modalContent.innerHTML = `
                 <h3 style="color: var(--accent); margin-bottom: 10px;">${email.subject || 'No Subject'}</h3>
-                <p><strong>From:</strong> ${email.from || 'Unknown'}</p>
+                <p><strong>From:</strong> ${email.from?.address || 'Unknown'}</p>
                 <p><strong>To:</strong> ${currentEmail}</p>
-                <p><strong>Date:</strong> ${new Date(email.date).toLocaleString()}</p>
-                <div style="margin-top: 20px; white-space: pre-wrap;">${email.body || 'No content'}</div>
+                <p><strong>Date:</strong> ${new Date(email.createdAt).toLocaleString()}</p>
+                <div style="margin-top: 20px; white-space: pre-wrap;">${fullMessage?.text || fullMessage?.html || 'No content'}</div>
                 <button id="closeModal" style="margin-top: 20px; padding: 8px 16px; background: var(--accent); color: var(--dark); border: none; border-radius: 4px; cursor: pointer;">Close</button>
             `;
             
@@ -355,16 +413,42 @@
             });
         }
 
+        // Check Inbox
+        async function checkInbox() {
+            if (!currentEmail || !authToken) return;
+
+            try {
+                refreshBtn.innerHTML = '<div class="loading"></div> Loading';
+                
+                const emails = await getMessages();
+                refreshBtn.textContent = 'Refresh';
+                renderEmails(emails);
+                
+            } catch (error) {
+                console.error("Error checking inbox:", error);
+                inbox.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: var(--accent);">
+                        Could not load emails. Try refreshing.
+                    </div>
+                `;
+                refreshBtn.textContent = 'Refresh';
+            }
+        }
+
         // Generate New Email
         async function generateEmail() {
             try {
-                inbox.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading"></div> Creating email...</div>';
+                inbox.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading"></div>  Wetting for Email...</div>';
                 
-                currentEmail = generateRandomEmail();
+                // Generate random email with mail.tm domain
+                currentEmail = await generateRandomEmail();
                 emailDisplay.textContent = currentEmail;
                 
-                // Create session (mock)
-                await createEmailSession(currentEmail);
+                // Create account on mail.tm
+                await createEmailAccount(currentEmail);
+                
+                // Login to get auth token
+                authToken = await loginToAccount(currentEmail);
                 
                 // Check inbox
                 await checkInbox();
