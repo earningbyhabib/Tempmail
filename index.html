@@ -31,21 +31,28 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            text-align: left;
+            padding: 20px;
         }
 
-        /* Header Image - Only your picture */
-        .header-image {
+        .header-container {
             width: 100%;
             max-width: 1080px;
             height: 299px;
-            object-fit: cover;
-            object-position: center;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            overflow: hidden;
         }
 
-        /* Text below image */
+        .header-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
         .header-text {
             text-align: center;
-            margin: 20px 0 30px;
+            margin: 15px 0;
         }
 
         .logo-text {
@@ -61,7 +68,6 @@
             opacity: 0.9;
         }
 
-        /* Main content */
         .card {
             width: 100%;
             max-width: 600px;
@@ -69,17 +75,8 @@
             backdrop-filter: blur(10px);
             border-radius: var(--border-radius);
             box-shadow: var(--shadow);
-            padding: 30px;
+            padding: 25px;
             border: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 30px;
-        }
-
-        .section-title {
-            font-size: 1.2rem;
-            margin-bottom: 20px;
-            color: var(--accent);
-            text-align: center;
-            font-weight: 600;
         }
 
         .email-display {
@@ -87,22 +84,22 @@
             border-radius: var(--border-radius);
             padding: 15px;
             font-size: 1.1rem;
-            text-align: center;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             border: 1px solid rgba(255,255,255,0.1);
             word-break: break-all;
+            text-align: center;
         }
 
         .button-group {
             display: flex;
             gap: 10px;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             flex-wrap: wrap;
             justify-content: center;
         }
 
         .btn {
-            padding: 12px 25px;
+            padding: 12px 20px;
             border: none;
             border-radius: var(--border-radius);
             background: var(--accent);
@@ -110,9 +107,7 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
-            font-size: 0.9rem;
-            min-width: 120px;
-            text-align: center;
+            min-width: 100px;
         }
 
         .btn:hover {
@@ -125,14 +120,10 @@
             color: var(--light);
         }
 
-        .btn-secondary:hover {
-            background: rgba(255,255,255,0.3);
-        }
-
         .inbox {
             background: rgba(0,0,0,0.3);
             border-radius: var(--border-radius);
-            padding: 20px;
+            padding: 15px;
             max-height: 400px;
             overflow-y: auto;
         }
@@ -148,21 +139,12 @@
 
         .email-item:hover {
             background: rgba(255,255,255,0.2);
-            transform: translateX(5px);
         }
 
         .email-subject {
             font-weight: 600;
-            margin-bottom: 5px;
             color: var(--accent);
-        }
-
-        .email-preview {
-            font-size: 0.9rem;
-            opacity: 0.8;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            margin-bottom: 5px;
         }
 
         .loading {
@@ -180,35 +162,35 @@
         }
 
         @media (max-width: 768px) {
-            .header-image {
-                height: auto;
-                max-height: 299px;
-            }
-            
             .logo-text {
                 font-size: 2rem;
             }
             
+            .header-container {
+                height: auto;
+                aspect-ratio: 1080/299;
+            }
+            
             .btn {
                 padding: 10px 15px;
-                min-width: 100px;
             }
         }
     </style>
 </head>
 <body>
-    <!-- শুধু আপনার পিকচার (কোন টেক্সট ওভারলে নেই) -->
-    <img src="https://i.postimg.cc/W118gC2j/Screenshot-20250727-062027.jpg" alt="EARNING BY HABIB Header" class="header-image">
+    <!-- Header Image -->
+    <div class="header-container">
+        <img src="https://i.postimg.cc/W118gC2j/Screenshot-20250727-062027.jpg" alt="EARNING BY HABIB" class="header-image">
+    </div>
 
-    <!-- পিকচারের নিচে লাইন দুটি -->
+    <!-- Text Below Image -->
     <div class="header-text">
         <div class="logo-text">TURBO</div>
         <div class="subtitle-text">Temporary Disposable Email</div>
     </div>
 
-    <!-- মূল সিস্টেম -->
+    <!-- Main Content -->
     <div class="card">
-        <div class="section-title">Your Temporary Email Address</div>
         <div class="email-display" id="emailDisplay">Loading...</div>
         
         <div class="button-group">
@@ -217,7 +199,6 @@
             <button class="btn btn-secondary" id="refreshBtn">Refresh</button>
         </div>
 
-        <div class="section-title">Inbox</div>
         <div class="inbox" id="inbox">
             <div style="text-align: center; padding: 20px;">
                 <div class="loading"></div> Loading emails...
@@ -244,10 +225,9 @@
             try {
                 inbox.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading"></div> Creating email...</div>';
                 
-                // Generate random username
                 const randomString = Math.random().toString(36).substring(2, 10);
-                const domain = "mail.tm";
-                currentEmail = `${randomString}@${domain}`;
+                currentEmail = `${randomString}@mail.tm`;
+                emailDisplay.textContent = currentEmail;
                 
                 // Create account
                 const accountResponse = await fetch(`${API_URL}/accounts`, {
@@ -259,11 +239,9 @@
                     })
                 });
                 
-                const accountData = await accountResponse.json();
-                currentAccount = accountData;
-                emailDisplay.textContent = currentEmail;
+                currentAccount = await accountResponse.json();
                 
-                // Login to get token
+                // Login
                 const tokenResponse = await fetch(`${API_URL}/token`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -276,12 +254,10 @@
                 const tokenData = await tokenResponse.json();
                 token = tokenData.token;
                 
-                // Start checking inbox
                 checkInbox();
                 
             } catch (error) {
-                console.error("Error generating email:", error);
-                inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--accent);">Error creating email. Please try again.</div>';
+                inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--accent);">Error creating email</div>';
             }
         }
 
@@ -296,17 +272,16 @@
                     headers: { "Authorization": `Bearer ${token}` }
                 });
                 
-                const messages = await response.json();
+                const data = await response.json();
                 refreshBtn.textContent = 'Refresh';
                 
-                if (messages && messages['hydra:member'] && messages['hydra:member'].length > 0) {
-                    renderEmails(messages['hydra:member']);
+                if (data && data['hydra:member'] && data['hydra:member'].length > 0) {
+                    renderEmails(data['hydra:member']);
                 } else {
-                    inbox.innerHTML = '<div style="text-align: center; padding: 20px;">No emails yet. Share your email to receive messages.</div>';
+                    inbox.innerHTML = '<div style="text-align: center; padding: 20px;">No emails yet</div>';
                 }
             } catch (error) {
-                console.error("Error checking inbox:", error);
-                inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--accent);">Error loading inbox. Please refresh.</div>';
+                inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--accent);">Error loading inbox</div>';
                 refreshBtn.textContent = 'Refresh';
             }
         }
@@ -320,7 +295,8 @@
                 emailEl.className = 'email-item';
                 emailEl.innerHTML = `
                     <div class="email-subject">${email.subject || 'No Subject'}</div>
-                    <div class="email-preview">${email.intro || 'No preview available'}</div>
+                    <div>From: ${email.from.value || 'Unknown'}</div>
+                    <div>${email.intro || 'No preview'}</div>
                 `;
                 
                 emailEl.addEventListener('click', () => viewEmail(email.id));
@@ -336,22 +312,20 @@
                 });
                 
                 const email = await response.json();
-                alert(`Subject: ${email.subject}\n\nFrom: ${email.from}\n\n${email.text}`);
-                
+                alert(`Subject: ${email.subject}\n\nFrom: ${email.from.value}\n\n${email.text}`);
             } catch (error) {
-                console.error("Error viewing email:", error);
-                alert("Error loading email content.");
+                alert("Error loading email");
             }
         }
 
-        // Event Listeners
+        // Copy Email
         copyBtn.addEventListener('click', () => {
-            const range = document.createRange();
-            range.selectNode(emailDisplay);
-            window.getSelection().removeAllRanges();
-            window.getSelection().addRange(range);
+            const tempInput = document.createElement('input');
+            tempInput.value = currentEmail;
+            document.body.appendChild(tempInput);
+            tempInput.select();
             document.execCommand('copy');
-            window.getSelection().removeAllRanges();
+            document.body.removeChild(tempInput);
             
             copyBtn.textContent = 'Copied!';
             setTimeout(() => {
@@ -359,6 +333,7 @@
             }, 2000);
         });
 
+        // Event Listeners
         newBtn.addEventListener('click', generateEmail);
         refreshBtn.addEventListener('click', checkInbox);
 
