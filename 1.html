@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TURBO TEMP MAIL - EARNING BY HABIB</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00C853;
+            --secondary: #1B5E20;
+            --accent: #FFD600;
+            --dark: #121212;
+            --light: #FFFFFF;
+            --card-bg: rgba(255, 255, 255, 0.1);
+            --border-radius: 8px;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            color: var(--light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Header Image - Only your picture */
+        .header-image {
+            width: 100%;
+            max-width: 1080px;
+            height: 299px;
+            object-fit: cover;
+            object-position: center;
+        }
+
+        /* Text below image */
+        .header-text {
+            text-align: center;
+            margin: 20px 0 30px;
+        }
+
+        .logo-text {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 3rem;
+            font-weight: 900;
+            color: var(--light);
+            margin-bottom: 5px;
+        }
+
+        .subtitle-text {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        /* Main content */
+        .card {
+            width: 100%;
+            max-width: 600px;
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: var(--accent);
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .email-display {
+            background: rgba(0,0,0,0.3);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            font-size: 1.1rem;
+            text-align: center;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+            word-break: break-all;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: var(--border-radius);
+            background: var(--accent);
+            color: var(--dark);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255,214,0,0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: var(--light);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .inbox {
+            background: rgba(0,0,0,0.3);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .email-item {
+            background: rgba(255,255,255,0.1);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .email-item:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateX(5px);
+        }
+
+        .email-subject {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--accent);
+        }
+
+        .email-preview {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .header-image {
+                height: auto;
+                max-height: 299px;
+            }
+            
+            .logo-text {
+                font-size: 2rem;
+            }
+            
+            .btn {
+                padding: 10px 15px;
+                min-width: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- শুধু আপনার পিকচার (কোন টেক্সট ওভারলে নেই) -->
+    <img src="https://i.postimg.cc/W118gC2j/Screenshot-20250727-062027.jpg" alt="EARNING BY HABIB Header" class="header-image">
+
+    <!-- পিকচারের নিচে লাইন দুটি -->
+    <div class="header-text">
+        <div class="logo-text">TURBO</div>
+        <div class="subtitle-text">Temporary Disposable Email</div>
+    </div>
+
+    <!-- মূল সিস্টেম -->
+    <div class="card">
+        <div class="section-title">Your Temporary Email Address</div>
+        <div class="email-display" id="emailDisplay">Loading...</div>
+        
+        <div class="button-group">
+            <button class="btn" id="copyBtn">Copy</button>
+            <button class="btn btn-secondary" id="newBtn">New Email</button>
+            <button class="btn btn-secondary" id="refreshBtn">Refresh</button>
+        </div>
+
+        <div class="section-title">Inbox</div>
+        <div class="inbox" id="inbox">
+            <div style="text-align: center; padding: 20px;">
+                <div class="loading"></div> Loading emails...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Configuration
+        const API_URL = "https://api.mail.tm";
+        let currentAccount = null;
+        let token = null;
+        let currentEmail = null;
+
+        // DOM Elements
+        const emailDisplay = document.getElementById('emailDisplay');
+        const inbox = document.getElementById('inbox');
+        const copyBtn = document.getElementById('copyBtn');
+        const newBtn = document.getElementById('newBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+
+        // Generate Random Email
+        async function generateEmail() {
+            try {
+                inbox.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading"></div> Creating email...</div>';
+                
+                // Generate random username
+                const randomString = Math.random().toString(36).substring(2, 10);
+                const domain = "mail.tm";
+                currentEmail = `${randomString}@${domain}`;
+                
+                // Create account
+                const accountResponse = await fetch(`${API_URL}/accounts`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        address: currentEmail,
+                        password: "strongpassword123"
+                    })
+                });
+                
+                const accountData = await accountResponse.json();
+                currentAccount = accountData;
+                emailDisplay.textContent = currentEmail;
+                
+                // Login to get token
+                const tokenResponse = await fetch(`${API_URL}/token`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        address: currentEmail,
+                        password: "strongpassword123"
+                    })
+                });
+                
+                const tokenData = await tokenResponse.json();
+                token = tokenData.token;
+                
+                // Start checking inbox
+                checkInbox();
+                
+            } catch (error) {
+                console.error("Error generating email:", error);
+                inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--accent);">Error creating email. Please try again.</div>';
+            }
+        }
+
+        // Check Inbox
+        async function checkInbox() {
+            if (!token) return;
+            
+            try {
+                refreshBtn.innerHTML = '<div class="loading"></div>';
+                
+                const response = await fetch(`${API_URL}/messages`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                
+                const messages = await response.json();
+                refreshBtn.textContent = 'Refresh';
+                
+                if (messages && messages['hydra:member'] && messages['hydra:member'].length > 0) {
+                    renderEmails(messages['hydra:member']);
+                } else {
+                    inbox.innerHTML = '<div style="text-align: center; padding: 20px;">No emails yet. Share your email to receive messages.</div>';
+                }
+            } catch (error) {
+                console.error("Error checking inbox:", error);
+                inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--accent);">Error loading inbox. Please refresh.</div>';
+                refreshBtn.textContent = 'Refresh';
+            }
+        }
+
+        // Render Emails
+        function renderEmails(emails) {
+            inbox.innerHTML = '';
+            
+            emails.forEach(email => {
+                const emailEl = document.createElement('div');
+                emailEl.className = 'email-item';
+                emailEl.innerHTML = `
+                    <div class="email-subject">${email.subject || 'No Subject'}</div>
+                    <div class="email-preview">${email.intro || 'No preview available'}</div>
+                `;
+                
+                emailEl.addEventListener('click', () => viewEmail(email.id));
+                inbox.appendChild(emailEl);
+            });
+        }
+
+        // View Email
+        async function viewEmail(emailId) {
+            try {
+                const response = await fetch(`${API_URL}/messages/${emailId}`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                
+                const email = await response.json();
+                alert(`Subject: ${email.subject}\n\nFrom: ${email.from}\n\n${email.text}`);
+                
+            } catch (error) {
+                console.error("Error viewing email:", error);
+                alert("Error loading email content.");
+            }
+        }
+
+        // Event Listeners
+        copyBtn.addEventListener('click', () => {
+            const range = document.createRange();
+            range.selectNode(emailDisplay);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            document.execCommand('copy');
+            window.getSelection().removeAllRanges();
+            
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => {
+                copyBtn.textContent = 'Copy';
+            }, 2000);
+        });
+
+        newBtn.addEventListener('click', generateEmail);
+        refreshBtn.addEventListener('click', checkInbox);
+
+        // Initialize
+        generateEmail();
+        setInterval(checkInbox, 10000); // Auto-refresh every 10 seconds
+    </script>
+</body>
+</html>
