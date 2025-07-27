@@ -35,6 +35,29 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 12px rgba(0,0,0,0.3);
         }
+        
+        .copy-animation {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: #FFD600;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: bold;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1000;
+            animation: fadeInOut 1.5s ease-in-out;
+        }
+        
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -40%); }
+            20% { opacity: 1; transform: translate(-50%, -50%); }
+            80% { opacity: 1; transform: translate(-50%, -50%); }
+            100% { opacity: 0; transform: translate(-50%, -60%); }
+        }
     </style>
 </head>
 <body>
@@ -109,10 +132,21 @@
         </div>
     </div>
 
+    <div id="copyNotification" class="copy-animation"></div>
+
     <script>
+    function showCopyNotification(text) {
+        const notification = document.getElementById('copyNotification');
+        notification.textContent = text;
+        notification.style.opacity = 0;
+        notification.style.animation = 'none';
+        void notification.offsetWidth; // Trigger reflow
+        notification.style.animation = 'fadeInOut 1.5s ease-in-out';
+    }
+
     function copyUsername() {
         navigator.clipboard.writeText("@earningbyhabib").then(() => {
-            alert("ইউজারনেম কপি করা হয়েছে! টেলিগ্রামে সার্চ করুন");
+            showCopyNotification("ইউজারনেম কপি করা হয়েছে!");
         }).catch(err => {
             console.error("কপি করতে সমস্যা হয়েছে:", err);
         });
@@ -120,7 +154,7 @@
 
     function copyTelegramLink() {
         navigator.clipboard.writeText("https://t.me/earningbyhabib").then(() => {
-            alert("লিংক কপি করা হয়েছে! গুগল ক্রোমে পেস্ট করুন");
+            showCopyNotification("লিংক কপি করা হয়েছে!");
         }).catch(err => {
             console.error("কপি করতে সমস্যা হয়েছে:", err);
         });
