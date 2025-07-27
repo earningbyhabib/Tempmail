@@ -6,6 +6,7 @@
     <title>TURBO TEMP MAIL - EARNING BY HABIB</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
+        /* আপনার পূর্বের CSS স্টাইল একই রাখুন */
         :root {
             --primary: #00C853;
             --secondary: #1B5E20;
@@ -207,23 +208,18 @@
     </div>
 
     <script>
-        // Working Public Temp Mail APIs
-        const API_ENDPOINTS = [
-         
-            {
-                name: "10minutemail",
-                baseUrl: "https://10minutemail.com/api/v1",
-                generateEmail: (randomString) => `${randomString}@10minutemail.com`,
-                directAccess: true
-            },
-        ];
+        // MinuteInbox.com API Implementation
+        const MINUTE_INBOX_API = {
+            baseUrl: "https://www.minuteinbox.com",
+            domains: ["malldrops.com", "minuteinbox.com", "10mail.org"],
+            generateEmail: (randomString) => {
+                const randomDomain = MINUTE_INBOX_API.domains[Math.floor(Math.random() * MINUTE_INBOX_API.domains.length)];
+                return `${randomString}@${randomDomain}`;
+            }
+        };
 
-        // CORS Proxy for GitHub Pages
-        const PROXY_URL = "https://corsproxy.io/?";
-        let currentApiIndex = 0;
-        let currentAccount = null;
-        let token = null;
         let currentEmail = null;
+        let currentCookie = null;
         let refreshInterval = null;
 
         // DOM Elements
@@ -233,27 +229,33 @@
         const newBtn = document.getElementById('newBtn');
         const refreshBtn = document.getElementById('refreshBtn');
 
-        // Enhanced Fetch with Proxy and Error Handling
-        async function fetchEmailApi(url, options = {}, retries = 3) {
-            const api = API_ENDPOINTS[currentApiIndex];
-            const useProxy = !api.directAccess;
-            const fullUrl = useProxy ? `${PROXY_URL}${encodeURIComponent(url)}` : url;
+        // Fetch with CORS proxy
+        async function fetchMinuteInbox(url, options = {}, retries = 3) {
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(MINUTE_INBOX_API.baseUrl + url)}`;
             
             try {
-                const response = await fetch(fullUrl, {
+                const response = await fetch(proxyUrl, {
                     ...options,
                     headers: {
                         ...options.headers,
+                        "Accept": "application/json",
                         "X-Requested-With": "XMLHttpRequest"
-                    }
+                    },
+                    credentials: 'include'
                 });
                 
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                // Save cookies if any
+                if (response.headers.get('set-cookie')) {
+                    currentCookie = response.headers.get('set-cookie');
+                }
+                
                 return await response.json();
             } catch (error) {
                 if (retries > 0) {
                     console.log(`Retrying... (${retries} attempts left)`);
-                    return fetchEmailApi(url, options, retries - 1);
+                    return fetchMinuteInbox(url, options, retries - 1);
                 }
                 throw error;
             }
@@ -264,86 +266,53 @@
             try {
                 inbox.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading"></div> Creating email...</div>';
                 
-                const api = API_ENDPOINTS[currentApiIndex];
+                // First create a new email address
                 const randomString = Math.random().toString(36).substring(2, 10);
-                currentEmail = api.generateEmail(randomString);
+                currentEmail = MINUTE_INBOX_API.generateEmail(randomString);
                 emailDisplay.textContent = currentEmail;
                 
-                if (api.authRequired) {
-                    // Create account
-                    const accountResponse = await fetchEmailApi(`${api.baseUrl}/accounts`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            address: currentEmail,
-                            password: "strongpassword123"
-                        })
-                    });
-                    
-                    currentAccount = accountResponse;
-                    
-                    // Get token
-                    const tokenResponse = await fetchEmailApi(`${api.baseUrl}/token`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            address: currentEmail,
-                            password: "strongpassword123"
-                        })
-                    });
-                    
-                    token = tokenResponse.token;
-                }
+                // Initialize session
+                await fetchMinuteInbox('/index/index', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `email=${encodeURIComponent(currentEmail)}`
+                });
                 
-                checkInbox();
+                // Check inbox
+                await checkInbox();
                 
             } catch (error) {
-                console.error("Error with API:", API_ENDPOINTS[currentApiIndex].name, error);
-                if (currentApiIndex < API_ENDPOINTS.length - 1) {
-                    currentApiIndex++;
-                    generateEmail();
-                } else {
-                    inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--accent);">Please try again later</div>';
-                }
+                console.error("Error generating email:", error);
+                inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--accent);">Please try again later</div>';
             }
         }
 
-        // Check Inbox with Loading Animation
+        // Check Inbox
         async function checkInbox() {
             if (!currentEmail) return;
             
             try {
                 refreshBtn.innerHTML = '<div class="loading"></div> Loading';
-                const api = API_ENDPOINTS[currentApiIndex];
-                let emails = [];
                 
-                if (api.name === "10minutemail") {
-                    const [mailbox, domain] = currentEmail.split('@');
-                    const response = await fetchEmailApi(`${api.baseUrl}/messages?email=${currentEmail}`);
-                    emails = response || [];
-                } else if (api.authRequired && token) {
-                    const response = await fetchEmailApi(`${api.baseUrl}/messages`, {
-                        headers: { "Authorization": `Bearer ${token}` }
-                    });
-                    
-                    if (response && response['hydra:member']) {
-                        emails = response['hydra:member'];
-                    }
-                }
+                // Get email list
+                const response = await fetchMinuteInbox('/email-list', {
+                    method: 'GET'
+                });
                 
                 refreshBtn.textContent = 'Refresh';
                 
-                if (emails.length > 0) {
-                    renderEmails(emails);
+                if (response && response.length > 0) {
+                    renderEmails(response);
                 } else {
-                    inbox.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading"></div> No emails yet</div>';
+                    inbox.innerHTML = '<div style="text-align: center; padding: 20px;">No emails yet</div>';
                 }
             } catch (error) {
                 console.error("Error checking inbox:", error);
                 inbox.innerHTML = `
                     <div style="text-align: center; padding: 20px; color: var(--accent);">
-                        <div class="loading"></div>
-                        Connecting...
+                        Could not load emails. Try refreshing.
                     </div>
                 `;
                 refreshBtn.textContent = 'Refresh';
@@ -358,23 +327,13 @@
                 const emailEl = document.createElement('div');
                 emailEl.className = 'email-item';
                 
-                if (API_ENDPOINTS[currentApiIndex].name === "10minutemail") {
-                    emailEl.innerHTML = `
-                        <div class="email-subject">${email.subject || 'No Subject'}</div>
-                        <div>From: ${email.from || 'Unknown'}</div>
-                        <div>${email.body ? email.body.substring(0, 100) + '...' : 'No preview'}</div>
-                    `;
-                    emailEl.addEventListener('click', () => viewEmail(email.id));
-                } else {
-                    const fromValue = email.from?.value || email.from?.address || email.from || 'Unknown';
-                    emailEl.innerHTML = `
-                        <div class="email-subject">${email.subject || 'No Subject'}</div>
-                        <div>From: ${fromValue}</div>
-                        <div>${email.intro || email.preview || 'No preview'}</div>
-                    `;
-                    emailEl.addEventListener('click', () => viewEmail(email.id));
-                }
+                emailEl.innerHTML = `
+                    <div class="email-subject">${email.subject || 'No Subject'}</div>
+                    <div>From: ${email.from || 'Unknown'}</div>
+                    <div>${email.preview || 'No preview available'}</div>
+                `;
                 
+                emailEl.addEventListener('click', () => viewEmail(email.id));
                 inbox.appendChild(emailEl);
             });
         }
@@ -382,22 +341,50 @@
         // View Email
         async function viewEmail(emailId) {
             try {
-                const api = API_ENDPOINTS[currentApiIndex];
-                let emailData = null;
+                // Get full email content
+                const emailData = await fetchMinuteInbox(`/readmail?id=${emailId}`, {
+                    method: 'GET'
+                });
                 
-                if (api.name === "10minutemail") {
-                    emailData = await fetchEmailApi(`${api.baseUrl}/message/${emailId}?email=${currentEmail}`);
-                    alert(`Subject: ${emailData.subject}\n\nFrom: ${emailData.from}\n\n${emailData.body}`);
-                } else if (api.authRequired) {
-                    emailData = await fetchEmailApi(`${api.baseUrl}/messages/${emailId}`, {
-                        headers: { "Authorization": `Bearer ${token}` }
-                    });
-                    
-                    const fromValue = emailData.from?.value || emailData.from?.address || emailData.from || 'Unknown';
-                    alert(`Subject: ${emailData.subject}\n\nFrom: ${fromValue}\n\n${emailData.text || emailData.body}`);
-                }
+                // Create modal to display email
+                const modal = document.createElement('div');
+                modal.style.position = 'fixed';
+                modal.style.top = '0';
+                modal.style.left = '0';
+                modal.style.width = '100%';
+                modal.style.height = '100%';
+                modal.style.backgroundColor = 'rgba(0,0,0,0.8)';
+                modal.style.display = 'flex';
+                modal.style.justifyContent = 'center';
+                modal.style.alignItems = 'center';
+                modal.style.zIndex = '1000';
+                
+                const modalContent = document.createElement('div');
+                modalContent.style.backgroundColor = 'var(--dark)';
+                modalContent.style.padding = '20px';
+                modalContent.style.borderRadius = '8px';
+                modalContent.style.maxWidth = '80%';
+                modalContent.style.maxHeight = '80%';
+                modalContent.style.overflow = 'auto';
+                
+                modalContent.innerHTML = `
+                    <h3 style="color: var(--accent); margin-bottom: 10px;">${emailData.subject || 'No Subject'}</h3>
+                    <p><strong>From:</strong> ${emailData.from || 'Unknown'}</p>
+                    <p><strong>Date:</strong> ${new Date(emailData.date).toLocaleString()}</p>
+                    <div style="margin-top: 20px; white-space: pre-wrap;">${emailData.body || 'No content'}</div>
+                    <button id="closeModal" style="margin-top: 20px; padding: 8px 16px; background: var(--accent); color: var(--dark); border: none; border-radius: 4px; cursor: pointer;">Close</button>
+                `;
+                
+                modal.appendChild(modalContent);
+                document.body.appendChild(modal);
+                
+                document.getElementById('closeModal').addEventListener('click', () => {
+                    document.body.removeChild(modal);
+                });
+                
             } catch (error) {
-                alert("Error loading email");
+                alert("Error loading email content");
+                console.error("Error viewing email:", error);
             }
         }
 
