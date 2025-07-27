@@ -340,14 +340,22 @@
         </div>
     </div>
 
-    <!-- YouTube Video Container -->
-    <div class="video-container">
-        <iframe src="https://youtu.be/267Z-1FVhtU?si=WWf-CxNyhwPPozl0" 
-                title="YouTube video player" 
-                frameborder="0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                allowfullscreen></iframe>
-    </div>
+<!-- YouTube Video Container -->
+<div class="video-container">
+    <iframe id="youtubePlayer" 
+            title="YouTube video player" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen></iframe>
+</div>
+
+<script>
+    // এখানে শুধু ভিডিও আইডি দিন (পুরো URL নয়)
+    const youtubeVideoId = 'TeaNT5zSrYQ';
+    
+    // সঠিক এম্বেড URL সেট করা হচ্ছে
+    document.getElementById('youtubePlayer').src = `https://www.youtube.com/embed/${youtubeVideoId}`;
+</script>
 
     <script>
         // Mail.tm API Configuration
