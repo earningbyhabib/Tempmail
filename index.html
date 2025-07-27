@@ -15,6 +15,7 @@
             --card-bg: rgba(255, 255, 255, 0.1);
             --border-radius: 8px;
             --shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            --error: #FF5252;
         }
 
         * {
@@ -120,6 +121,11 @@
             color: var(--light);
         }
 
+        .btn-error {
+            background: var(--error);
+            color: var(--light);
+        }
+
         .inbox {
             background: rgba(0,0,0,0.3);
             border-radius: var(--border-radius);
@@ -155,6 +161,13 @@
             border-radius: 50%;
             border-top-color: var(--accent);
             animation: spin 1s linear infinite;
+        }
+
+        .status-text {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: var(--accent);
         }
 
         @keyframes spin {
@@ -204,6 +217,7 @@
                 <div class="loading"></div> Loading emails...
             </div>
         </div>
+        <div class="status-text" id="statusText"></div>
     </div>
 
     <script>
@@ -213,8 +227,8 @@
                 name: "1secmail",
                 baseUrl: "https://www.1secmail.com/api/v1",
                 domains: ["1secmail.com", "1secmail.net", "1secmail.org"],
-                generateEmail: (randomStr) => {
-                    const domain = this.domains[Math.floor(Math.random()*this.domains.length)];
+                generateEmail: function(randomStr) {
+                    const domain = this.domains[Math.floor(Math.random() * this.domains.length)];
                     return `${randomStr}@${domain}`;
                 },
                 directAccess: true
@@ -223,7 +237,18 @@
                 name: "mailgw",
                 baseUrl: "https://api.mail.gw",
                 domains: ["mail.gw"],
-                generateEmail: (randomStr) => `${randomStr}@mail.gw`,
+                generateEmail: function(randomStr) {
+                    return `${randomStr}@${this.domains[0]}`;
+                },
+                authRequired: true
+            },
+            {
+                name: "mail.tm",
+                baseUrl: "https://api.mail.tm",
+                domains: ["mail.tm"],
+                generateEmail: function(randomStr) {
+                    return `${randomStr}@${this.domains[0]}`;
+                },
                 authRequired: true
             }
         ];
@@ -233,6 +258,8 @@
         let currentEmail = null;
         let token = null;
         let refreshInterval = null;
+        let retryCount = 0;
+        const MAX_RETRIES = API_ENDPOINTS.length * 2; // Try each API twice
 
         // DOM Elements
         const emailDisplay = document.getElementById('emailDisplay');
@@ -240,6 +267,7 @@
         const copyBtn = document.getElementById('copyBtn');
         const newBtn = document.getElementById('newBtn');
         const refreshBtn = document.getElementById('refreshBtn');
+        const statusText = document.getElementById('statusText');
 
         // Simple fetch with error handling
         async function safeFetch(url, options = {}) {
@@ -253,9 +281,24 @@
             }
         }
 
+        // Update status message
+        function updateStatus(message, isError = false) {
+            statusText.textContent = message;
+            statusText.style.color = isError ? 'var(--error)' : 'var(--accent)';
+        }
+
         // Generate new email
         async function generateEmail() {
             try {
+                if (retryCount >= MAX_RETRIES) {
+                    updateStatus('All services failed. Please try again later.', true);
+                    inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--error);">All services failed. Please try again later.</div>';
+                    return;
+                }
+
+                retryCount++;
+                updateStatus(`Trying ${API_ENDPOINTS[currentApiIndex].name} service...`);
+                
                 inbox.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading"></div> Creating email...</div>';
                 
                 const api = API_ENDPOINTS[currentApiIndex];
@@ -287,17 +330,19 @@
                     token = auth.token;
                 }
                 
-                checkInbox();
+                updateStatus(`Connected to ${api.name} service`);
+                await checkInbox();
+                retryCount = 0; // Reset retry count on success
                 
             } catch (error) {
                 console.error("Error generating email:", error);
+                
                 // Try next API
                 currentApiIndex = (currentApiIndex + 1) % API_ENDPOINTS.length;
-                if (currentApiIndex === 0) {
-                    inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--accent);">All services failed. Please try again.</div>';
-                } else {
-                    setTimeout(generateEmail, 1000);
-                }
+                updateStatus(`Failed to connect. Trying next service...`, true);
+                
+                // Small delay before trying next API
+                setTimeout(generateEmail, 1000);
             }
         }
 
@@ -323,10 +368,13 @@
                     }
                 } else {
                     const response = await safeFetch(`${api.baseUrl}/messages`, {
-                        headers: { "Authorization": `Bearer ${token}` }
+                        headers: { 
+                            "Authorization": `Bearer ${token}`,
+                            "Content-Type": "application/json"
+                        }
                     });
                     
-                    emails = response['hydra:member'] || [];
+                    emails = response['hydra:member'] || response || [];
                 }
                 
                 refreshBtn.textContent = 'Refresh';
@@ -334,8 +382,14 @@
                 
             } catch (error) {
                 console.error("Error checking inbox:", error);
-                inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--accent);">Error loading emails</div>';
+                inbox.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--error);">Error loading emails. Trying again...</div>';
                 refreshBtn.textContent = 'Refresh';
+                
+                // Try to regenerate email if inbox fails
+                setTimeout(() => {
+                    currentApiIndex = (currentApiIndex + 1) % API_ENDPOINTS.length;
+                    generateEmail();
+                }, 2000);
             }
         }
 
@@ -354,7 +408,7 @@
                 
                 const subject = email.subject || 'No Subject';
                 const from = email.from?.value || email.from?.address || email.from || 'Unknown';
-                const preview = email.textBody || email.intro || email.body?.substring(0, 100) || 'No preview';
+                const preview = email.textBody || email.intro || (email.body ? email.body.substring(0, 100) : 'No preview');
                 
                 emailEl.innerHTML = `
                     <div class="email-subject">${subject}</div>
@@ -406,6 +460,7 @@
         newBtn.addEventListener('click', () => {
             clearInterval(refreshInterval);
             currentApiIndex = (currentApiIndex + 1) % API_ENDPOINTS.length;
+            retryCount = 0;
             generateEmail();
             refreshInterval = setInterval(checkInbox, 10000);
         });
